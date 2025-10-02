@@ -104,6 +104,129 @@ public class Main {
         return scanner.nextLine().trim();
     }
 
+    // --- Menu 1 : Gestion des Clients et Comptes ---
+
+    private void menuGestionClientsComptes() {
+        int choix;
+        do {
+            System.out.println("\n[1] --- GESTION CLIENTS ET COMPTES ---");
+            System.out.println("1. Ajouter un nouveau Client");
+            System.out.println("2. Créer un Compte pour un Client existant");
+            System.out.println("3. Lister tous les Clients et leurs Soldes Totaux");
+            System.out.println("4. Consulter les Comptes d'un Client");
+            System.out.println("0. Retour au Menu Principal");
+            System.out.print("Votre choix : ");
+
+            try {
+                choix = scanner.nextInt();
+                scanner.nextLine();
+                switch (choix) {
+                    case 1 -> ajouterClientUI();
+                    case 2 -> creerCompteUI();
+                    case 3 -> listerClientsEtSoldes();
+                    case 4 -> consulterComptesClient();
+                    case 0 -> System.out.println("Retour...");
+                    default -> System.err.println("Choix invalide.");
+                }
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre.");
+                scanner.nextLine();
+                choix = -1;
+            }
+        } while (choix != 0);
+    }
+
+    private void ajouterClientUI() {
+        System.out.println("\n--- AJOUT D'UN NOUVEAU CLIENT ---");
+        String nom = lireString("Nom du Client : ");
+        String email = lireString("Email du Client : ");
+
+        // ID à 0 car il sera généré par la base de données
+        Client nouveauClient = new Client(0, nom, email);
+        Client clientSauvegarde = clientService.ajouterClient(nouveauClient);
+
+        if (clientSauvegarde != null) {
+            System.out.printf(" Client %s (ID: %d) ajouté avec succès.\n", clientSauvegarde.nom(), clientSauvegarde.id());
+        } else {
+            System.err.println(" Échec de l'ajout du client.");
+        }
+    }
+
+    private void creerCompteUI() {
+        long clientId = lireLong("ID du Client pour le nouveau compte : ");
+        Optional<Client> clientOpt = clientService.trouverClientParId(clientId);
+
+        if (clientOpt.isEmpty()) {
+            System.err.println(" Client avec l'ID " + clientId + " non trouvé.");
+            return;
+        }
+
+        Client client = clientOpt.get();
+        System.out.printf("Création de compte pour : %s\n", client.nom());
+
+        String numero = lireString("Numéro de Compte : ");
+        double solde = lireDouble("Solde Initial : ");
+        String type = lireString("Type de Compte (courant/epargne) : ").toLowerCase();
+
+        Compte nouveauCompte = null;
+        if (type.equals("courant")) {
+            double decouvert = lireDouble("Découvert Autorisé : ");
+            nouveauCompte = new CompteCourant(0, numero, solde, clientId, decouvert);
+        } else if (type.equals("epargne")) {
+            double taux = lireDouble("Taux d'Intérêt (%) : ");
+            nouveauCompte = new CompteEpargne(0, numero, solde, clientId, taux);
+        } else {
+            System.err.println(" Type de compte invalide.");
+            return;
+        }
+
+        Compte compteSauvegarde = compteService.ajouterCompte(nouveauCompte);
+        if (compteSauvegarde != null) {
+            System.out.printf(" Compte %s créé pour le client %s.\n", compteSauvegarde.getNumero(), client.nom());
+        }
+    }
+
+    private void listerClientsEtSoldes() {
+        System.out.println("\n--- LISTE DES CLIENTS ET SOLDES TOTAUX ---");
+        List<Client> clients = clientService.listerTousLesClients();
+        if (clients.isEmpty()) {
+            System.out.println("Aucun client enregistré.");
+            return;
+        }
+
+        clients.forEach(c -> {
+            double soldeTotal = clientService.calculerSoldeTotalParClient(c.id());
+            // Utilisation de FormatUtils
+            System.out.printf("[ID: %d] %s (%s) - Solde Total: %s\n",
+                    c.id(),
+                    c.nom(),
+                    c.email(),
+                    FormatUtils.formatMontant(soldeTotal));
+        });
+    }
+
+    private void consulterComptesClient() {
+        long clientId = lireLong("ID du Client : ");
+        List<Compte> comptes = compteService.compteDAO.findByClientId(clientId);
+
+        if (comptes.isEmpty()) {
+            System.out.println("Aucun compte trouvé pour ce client.");
+            return;
+        }
+
+        System.out.printf("\n--- COMPTES DU CLIENT ID %d ---\n", clientId);
+        comptes.forEach(c -> {
+            String type = (c instanceof CompteCourant) ? "Courant" : "Épargne";
+            // Utilisation de FormatUtils
+            System.out.printf("  [ID: %d] N° %s | Type: %s | Solde: %s\n",
+                    c.getId(),
+                    c.getNumero(),
+                    type,
+                    FormatUtils.formatMontant(c.getSolde()));
+        });
+    }
+
+
 
 
 
