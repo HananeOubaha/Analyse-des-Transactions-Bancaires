@@ -29,6 +29,7 @@ public class Main {
             System.err.println(" Échec de la connexion à la base de données. Veuillez vérifier db.properties et le pilote JDBC.");
         }
     }
+
     // --- Menu Principal ---
 
     private void afficherMenuPrincipal() {
@@ -69,6 +70,7 @@ public class Main {
             default -> System.err.println("Choix invalide.");
         }
     }
+
     // --- Méthodes utilitaires pour la saisie ---
 
     private long lireLong(String prompt) {
@@ -225,6 +227,7 @@ public class Main {
                     FormatUtils.formatMontant(c.getSolde()));
         });
     }
+
     // --- Menu 2 : Opérations Bancaires ---
 
     private void menuOperationsBancaires() {
@@ -294,11 +297,205 @@ public class Main {
         }
     }
 
+    // --- Menu 3 : Consultation des Transactions ---
 
+    private void menuConsultationTransactions() {
+        int choix;
+        do {
+            System.out.println("\n[3] --- CONSULTATION TRANSACTIONS ---");
+            System.out.println("1. Lister les Transactions par Compte");
+            System.out.println("2. Filtrer les Transactions par Montant Minimum");
+            System.out.println("3. Regrouper les Transactions par Type");
+            System.out.println("0. Retour au Menu Principal");
+            System.out.print("Votre choix : ");
 
+            try {
+                choix = scanner.nextInt();
+                scanner.nextLine();
+                switch (choix) {
+                    case 1 -> listerTransactionsParCompteUI();
+                    case 2 -> filtrerParMontantMinUI();
+                    case 3 -> regrouperParTypeUI();
+                    case 0 -> System.out.println("Retour...");
+                    default -> System.err.println("Choix invalide.");
+                }
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre.");
+                scanner.nextLine();
+                choix = -1;
+            }
+        } while (choix != 0);
+    }
 
+    private void listerTransactionsParCompteUI() {
+        long idCompte = lireLong("ID du Compte : ");
+        List<Transaction> transactions = transactionService.listerTransactionsParCompte(idCompte);
 
+        if (transactions.isEmpty()) {
+            System.out.println("Aucune transaction trouvée pour ce compte.");
+            return;
+        }
 
+        System.out.printf("\n--- HISTORIQUE DES TRANSACTIONS DU COMPTE ID %d ---\n", idCompte);
+        transactions.forEach(t -> System.out.printf("[%s] %s: %s à %s\n",
+                FormatUtils.formatDate(t.date()),
+                t.type(),
+                FormatUtils.formatMontant(t.montant()),
+                t.lieu()));
+    }
 
+    private void filtrerParMontantMinUI() {
+        double montantMin = lireDouble("Montant Minimum pour le filtre : ");
+        List<Transaction> transactions = transactionService.filtrerParMontantMin(montantMin);
 
+        if (transactions.isEmpty()) {
+            System.out.println("Aucune transaction trouvée avec un montant supérieur ou égal à " + FormatUtils.formatMontant(montantMin) + ".");
+            return;
+        }
+
+        System.out.printf("\n--- TRANSACTIONS SUPÉRIEURES OU ÉGALES À %s ---\n", FormatUtils.formatMontant(montantMin));
+        transactions.forEach(t -> System.out.printf("[ID Compte: %d] %s: %s à %s\n",
+                t.idCompte(),
+                t.type(),
+                FormatUtils.formatMontant(t.montant()),
+                t.lieu()));
+    }
+
+    private void regrouperParTypeUI() {
+        System.out.println("\n--- REGROUPEMENT DES TRANSACTIONS PAR TYPE ---");
+        Map<TypeTransaction, List<Transaction>> regroupement = transactionService.regrouperParType();
+
+        regroupement.forEach((type, list) -> {
+            double total = list.stream().mapToDouble(Transaction::montant).sum();
+            // Utilisation de FormatUtils
+            System.out.printf("Type: %s | Nombre: %d | Total Volume: %s\n",
+                    type,
+                    list.size(),
+                    FormatUtils.formatMontant(total));
+        });
+    }
+
+    // --- Menu 4 : Analyse et Rapports ---
+
+    private void menuAnalyseRapports() {
+        int choix = -1;
+        do {
+            System.out.println("\n[4] --- ANALYSE ET RAPPORTS ---");
+            System.out.println("1. Top 5 des Clients par Solde Total");
+            System.out.println("2. Rapport Mensuel (Volume et Nombre par Type)");
+            System.out.println("3. Détection des Comptes Inactifs (> " + RapportService.PERIODE_INACTIVITE_JOURS + " jours)");
+            System.out.println("4. Détection des Transactions Suspectes (Montant/Lieu)");
+            System.out.println("5. Détection de Fréquence Excessive");
+            System.out.println("0. Retour au Menu Principal");
+            System.out.print("Votre choix : ");
+
+            try {
+                choix = scanner.nextInt();
+                scanner.nextLine();
+                traiterChoixRapports(choix);
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre.");
+                scanner.nextLine();
+                choix = -1;
+            }
+        } while (choix != 0);
+    }
+
+    private void traiterChoixRapports(int choix) {
+        switch (choix) {
+            case 1 -> afficherTop5Clients();
+            case 2 -> afficherRapportMensuel();
+            case 3 -> afficherComptesInactifs();
+            case 4 -> afficherTransactionsSuspectes();
+            case 5 -> afficherFrequenceExcessive();
+            case 0 -> System.out.println("Retour au menu principal...");
+            default -> System.err.println("Choix invalide.");
+        }
+    }
+
+    private void afficherTop5Clients() {
+        System.out.println("\n--- TOP 5 DES CLIENTS PAR SOLDE TOTAL ---");
+        List<Map.Entry<Client, Double>> topClients = rapportService.genererTop5ClientsParSolde();
+
+        if (topClients.isEmpty()) {
+            System.out.println("Aucun client trouvé pour le classement.");
+            return;
+        }
+
+        for (int i = 0; i < topClients.size(); i++) {
+            Map.Entry<Client, Double> entry = topClients.get(i);
+            // Utilisation de FormatUtils
+            System.out.printf("%d. %s (%s) - Solde Total: %s\n",
+                    (i + 1),
+                    entry.getKey().nom(),
+                    entry.getKey().email(),
+                    FormatUtils.formatMontant(entry.getValue()));
+        }
+    }
+
+    private void afficherRapportMensuel() {
+        int mois = (int) lireLong("Entrez le mois (1-12) : ");
+        int annee = (int) lireLong("Entrez l'année : ");
+
+        System.out.printf("\n--- RAPPORT MENSUEL (%d/%d) ---\n", mois, annee);
+
+        Map<TypeTransaction, Map<String, Object>> rapport = rapportService.genererRapportMensuel(mois, annee);
+
+        if (rapport.isEmpty()) {
+            System.out.println("Aucune transaction enregistrée pour cette période.");
+            return;
+        }
+
+        rapport.forEach((type, stats) -> {
+            double volumeTotal = (double) stats.get("volumeTotal");
+            // Utilisation de FormatUtils
+            System.out.printf("Type : %s | Nombre de Transactions : %d | Volume Total : %s\n",
+                    type,
+                    (long) stats.get("nombre"),
+                    FormatUtils.formatMontant(volumeTotal));
+        });
+    }
+
+    private void afficherComptesInactifs() {
+        System.out.println("\n--- COMPTES INACTIFS (> " + RapportService.PERIODE_INACTIVITE_JOURS + " jours) ---");
+        List<Compte> inactifs = rapportService.identifierComptesInactifs();
+
+        if (inactifs.isEmpty()) {
+            System.out.println(" Aucune anomalie détectée : Tous les comptes sont actifs.");
+            return;
+        }
+
+        inactifs.forEach(c -> System.out.printf(" ALERTE : Compte N° %s (ID Client: %d) est inactif.\n", c.getNumero(), c.getIdClient()));
+    }
+
+    private void afficherTransactionsSuspectes() {
+        System.out.println("\n--- TRANSACTIONS SUSPECTES (Montant > 10000 ou Lieu Inhabituel) ---");
+        List<Transaction> suspectes = transactionService.detecterTransactionsSuspectes();
+
+        if (suspectes.isEmpty()) {
+            System.out.println(" Aucune anomalie de montant ou de lieu détectée.");
+            return;
+        }
+
+        suspectes.forEach(t -> System.out.printf(" SUSPECT : Compte %d | Montant: %s | Type: %s | Lieu: %s\n",
+                t.idCompte(),
+                FormatUtils.formatMontant(t.montant()), // Utilisation de FormatUtils
+                t.type(),
+                t.lieu()));
+    }
+
+    private void afficherFrequenceExcessive() {
+        System.out.println("\n--- TRANSACTIONS À FRÉQUENCE EXCESSIVE (Simulées) ---");
+        List<Transaction> suspectes = transactionService.detecterFrequenceExcessive();
+
+        if (suspectes.isEmpty()) {
+            System.out.println(" Aucune anomalie de fréquence excessive détectée.");
+            return;
+        }
+
+        suspectes.forEach(t -> System.out.printf(" FRÉQUENCE ALERTE : Compte %d | Montant: %s | Date: %s\n",
+                t.idCompte(),
+                FormatUtils.formatMontant(t.montant()),
+                FormatUtils.formatDate(t.date())));
+    }
 }
