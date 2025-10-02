@@ -69,6 +69,42 @@ public class Main {
             default -> System.err.println("Choix invalide.");
         }
     }
+    // --- Méthodes utilitaires pour la saisie ---
+
+    private long lireLong(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                long val = scanner.nextLong();
+                scanner.nextLine();
+                return val;
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre entier (ID/Montant).");
+                scanner.nextLine();
+            }
+        }
+    }
+
+    private double lireDouble(String prompt) {
+        while (true) {
+            try {
+                System.out.print(prompt);
+                double val = scanner.nextDouble();
+                scanner.nextLine();
+                return val;
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre décimal (Solde/Taux/Découvert).");
+                scanner.nextLine();
+            }
+        }
+    }
+
+    private String lireString(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine().trim();
+    }
+
+
 
 
 
