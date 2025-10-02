@@ -225,6 +225,76 @@ public class Main {
                     FormatUtils.formatMontant(c.getSolde()));
         });
     }
+    // --- Menu 2 : Opérations Bancaires ---
+
+    private void menuOperationsBancaires() {
+        int choix;
+        do {
+            System.out.println("\n[2] --- OPÉRATIONS BANCAIRES ---");
+            System.out.println("1. Effectuer un Versement");
+            System.out.println("2. Effectuer un Retrait");
+            System.out.println("3. Effectuer un Virement");
+            System.out.println("0. Retour au Menu Principal");
+            System.out.print("Votre choix : ");
+
+            try {
+                choix = scanner.nextInt();
+                scanner.nextLine();
+                switch (choix) {
+                    case 1 -> effectuerVersementUI();
+                    case 2 -> effectuerRetraitUI();
+                    case 3 -> effectuerVirementUI();
+                    case 0 -> System.out.println("Retour...");
+                    default -> System.err.println("Choix invalide.");
+                }
+            } catch (InputMismatchException e) {
+                System.err.println(" Erreur de saisie. Veuillez entrer un nombre.");
+                scanner.nextLine();
+                choix = -1;
+            }
+        } while (choix != 0);
+    }
+
+    private void effectuerVersementUI() {
+        System.out.println("\n--- VERSEMENT ---");
+        long idCompte = lireLong("ID du Compte Bénéficiaire : ");
+        double montant = lireDouble("Montant du Versement : ");
+        String lieu = lireString("Lieu de l'Opération : ");
+
+        if (compteService.effectuerVersement(idCompte, montant, lieu)) {
+            System.out.println(" Versement réussi.");
+        } else {
+            System.err.println(" Versement échoué (vérifiez l'ID du compte).");
+        }
+    }
+
+    private void effectuerRetraitUI() {
+        System.out.println("\n--- RETRAIT ---");
+        long idCompte = lireLong("ID du Compte Source : ");
+        double montant = lireDouble("Montant du Retrait : ");
+        String lieu = lireString("Lieu de l'Opération : ");
+
+        if (compteService.effectuerRetrait(idCompte, montant, lieu)) {
+            System.out.println(" Retrait réussi.");
+        } else {
+            System.err.println(" Retrait échoué (solde insuffisant ou limites dépassées).");
+        }
+    }
+
+    private void effectuerVirementUI() {
+        System.out.println("\n--- VIREMENT ---");
+        long idSource = lireLong("ID du Compte Source : ");
+        long idDest = lireLong("ID du Compte Destination : ");
+        double montant = lireDouble("Montant du Virement : ");
+
+        if (compteService.effectuerVirement(idSource, idDest, montant)) {
+            System.out.println(" Virement réussi. Solde des deux comptes mis à jour.");
+        } else {
+            System.err.println(" Virement échoué (problème au débit ou comptes introuvables).");
+        }
+    }
+
+
 
 
 
