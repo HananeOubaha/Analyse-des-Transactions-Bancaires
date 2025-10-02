@@ -27,7 +27,7 @@ public class CompteService {
     // --- Opérations CRUD de base ---
 
     public Compte ajouterCompte(Compte compte) {
-        // Logique métier : S'assurer qu'un numéro de compte est unique avant de l'enregistrer
+        //   S'assurer qu'un numéro de compte est unique avant de l'enregistrer
         if (compteDAO.findByNumero(compte.getNumero()).isPresent()) {
             System.err.println("Erreur: Le numéro de compte " + compte.getNumero() + " existe déjà.");
             return null;
@@ -43,7 +43,7 @@ public class CompteService {
         return compteDAO.findAll();
     }
 
-    // --- Logique Métier et Transactions ---
+    //  Transactions
 
     /**
      * Effectue une opération de débit sur un compte et enregistre la transaction.
