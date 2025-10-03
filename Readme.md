@@ -1,4 +1,3 @@
-J'ai compris. Voici le fichier **`README.md`** complet et parfaitement formaté en Markdown, avec tous les titres et séparations, pour que vous puissiez le copier-coller directement dans votre dépôt GitHub.
 
 -----
 
