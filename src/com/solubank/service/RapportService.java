@@ -37,10 +37,6 @@ public class RapportService {
 
     // --- Génération de Rapports Statistique (Stream API Avancé) ---
 
-    /**
-     * Génère le top 5 des clients ayant le solde total le plus élevé.
-     * Utilise Stream API pour regrouper, sommer, trier et limiter.
-     */
     public List<Map.Entry<Client, Double>> genererTop5ClientsParSolde() {
         // 1. Récupérer tous les comptes et les regrouper par ID Client
         Map<Long, List<Compte>> comptesParClient = compteDAO.findAll().stream()
@@ -67,10 +63,6 @@ public class RapportService {
                 .toList();
     }
 
-    /**
-     * Produit un rapport mensuel : Nombre de transactions par type et volume total.
-     * Utilise groupingBy et mapping (opérations complexes de Collectors).
-     */
     public Map<TypeTransaction, Map<String, Object>> genererRapportMensuel(int mois, int annee) {
         LocalDate debutMois = LocalDate.of(annee, mois, 1);
         LocalDate finMois = debutMois.plusMonths(1).minusDays(1);
@@ -97,10 +89,6 @@ public class RapportService {
 
     // --- Détection des Anomalies (Spécifique au Rapport) ---
 
-    /**
-     * Identifie les comptes inactifs depuis une certaine période (90 jours simulés).
-     * Un compte est inactif si sa dernière transaction est plus ancienne que le seuil.
-     */
     public List<Compte> identifierComptesInactifs() {
         List<Compte> tousComptes = compteDAO.findAll();
         LocalDate seuilInactivite = LocalDate.now().minusDays(PERIODE_INACTIVITE_JOURS);

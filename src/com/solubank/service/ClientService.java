@@ -1,4 +1,3 @@
-// Dans le package com.solubank.service
 package service;
 
 import dao.ClientDAO;
@@ -25,7 +24,7 @@ public class ClientService {
     // --- Opérations CRUD de base ---
 
     public Client ajouterClient(Client client) {
-        // Logique de validation métier avant l'enregistrement (ex: vérifier l'email)
+        // Logique de validation métier avant l'enregistrement
         if (client.nom() == null || client.nom().trim().isEmpty() || !client.email().contains("@")) {
             System.err.println("Validation échouée: Nom ou Email invalide.");
             return null;
@@ -68,10 +67,6 @@ public class ClientService {
 
     // --- Méthodes de Rapport (Utilisation de la Programmation Fonctionnelle) ---
 
-    /**
-     * Calcule le solde total de tous les comptes pour un client donné.
-     * Utilise Stream API pour agréger les données.
-     */
     public double calculerSoldeTotalParClient(long clientId) {
         List<Compte> comptes = compteDAO.findByClientId(clientId);
 
@@ -81,9 +76,6 @@ public class ClientService {
                 .sum();                       // Somme de tous les soldes
     }
 
-    /**
-     * Compte le nombre de comptes pour un client donné.
-     */
     public long compterNombreDeComptesParClient(long clientId) {
         List<Compte> comptes = compteDAO.findByClientId(clientId);
 
