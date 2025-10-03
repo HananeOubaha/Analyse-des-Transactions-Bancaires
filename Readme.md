@@ -75,8 +75,7 @@ db.password=votre_mot_de_passe
 
 ## 🖼️ Diagramme de Classes UML
 
-[diagramme de classe ]("C:\Users\safiy\Desktop\Analyse-des-Transactions-Bancaires\src\AnalysedesTransactionsBancaires.png")
-
+![Diagramme de Classes UML de l'application](src/AnalysedesTransactionsBancaires.png)
 `![Diagramme de Classes UML de l'application](diagramme_classes.png)`
 
 -----
