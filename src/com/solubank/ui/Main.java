@@ -131,6 +131,10 @@ public class Main {
                     case 2 -> creerCompteUI();
                     case 3 -> listerClientsEtSoldes();
                     case 4 -> consulterComptesClient();
+                    case 5 -> supprimerClientUI();
+                    case 6 -> rechercherClientParNomUI();
+                    case 7 -> afficherComptesMaxMinSolde();
+                    case 8 -> menuModificationDonnees();
                     case 0 -> System.out.println("Retour...");
                     default -> System.err.println("Choix invalide.");
                 }
