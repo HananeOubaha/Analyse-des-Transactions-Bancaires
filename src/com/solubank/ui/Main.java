@@ -3,7 +3,8 @@ package ui;
 import service.*;
 import entity.*;
 import util.DatabaseConnection;
-import util.FormatUtils; // Import de la classe utilitaire de formatage
+import util.FormatUtils;
+import java.time.LocalDate;
 
 import java.util.InputMismatchException;
 import java.util.List;
@@ -116,6 +117,9 @@ public class Main {
             System.out.println("2. Créer un Compte pour un Client existant");
             System.out.println("3. Lister tous les Clients et leurs Soldes Totaux");
             System.out.println("4. Consulter les Comptes d'un Client");
+            System.out.println("5. Supprimer un Client et ses Comptes");
+            System.out.println("6. Rechercher un Client par Nom");
+            System.out.println("7. Compte avec Solde Maximum/Minimum");
             System.out.println("0. Retour au Menu Principal");
             System.out.print("Votre choix : ");
 
@@ -219,13 +223,160 @@ public class Main {
         System.out.printf("\n--- COMPTES DU CLIENT ID %d ---\n", clientId);
         comptes.forEach(c -> {
             String type = (c instanceof CompteCourant) ? "Courant" : "Épargne";
-            // Utilisation de FormatUtils
             System.out.printf("  [ID: %d] N° %s | Type: %s | Solde: %s\n",
                     c.getId(),
                     c.getNumero(),
                     type,
                     FormatUtils.formatMontant(c.getSolde()));
-        });
+
+            // Intégration de l'alerte ici
+            verifierEtAfficherAlerteSoldeBas(c);
+        });;
+    }
+
+    private void supprimerClientUI() {
+        System.out.println("\n--- SUPPRESSION D'UN CLIENT ---");
+        long clientId = lireLong("ID du Client à supprimer : ");
+
+        Optional<Client> clientOpt = clientService.trouverClientParId(clientId);
+
+        if (clientOpt.isEmpty()) {
+            System.err.println(" Client avec l'ID " + clientId + " non trouvé.");
+            return;
+        }
+
+        System.out.printf("ATTENTION : Voulez-vous vraiment supprimer le client %s et TOUS ses comptes ? (oui/non) : ", clientOpt.get().nom());
+        String confirmation = scanner.nextLine().toLowerCase();
+
+        if (confirmation.equals("oui")) {
+            clientService.supprimerClient(clientId);
+            System.out.printf(" Client (ID: %d) et toutes ses données associées ont été supprimés.\n", clientId);
+        } else {
+            System.out.println("Opération annulée.");
+        }
+    }
+    private void menuModificationDonnees() {
+        System.out.println("\n--- MODIFICATION DE DONNÉES ---");
+        System.out.println("1. Modifier les informations d'un Client (Nom/Email)");
+        System.out.println("2. Modifier les paramètres d'un Compte (Découvert/Taux)");
+        System.out.print("Votre choix : ");
+
+        try {
+            int choix = scanner.nextInt();
+            scanner.nextLine();
+
+            if (choix == 1) {
+                modifierClientUI();
+            } else if (choix == 2) {
+                modifierCompteUI();
+            } else {
+                System.err.println(" Choix invalide.");
+            }
+        } catch (InputMismatchException e) {
+            System.err.println(" Erreur de saisie.");
+            scanner.nextLine();
+        }
+    }
+
+    private void modifierClientUI() {
+        long clientId = lireLong("ID du Client à modifier : ");
+        Optional<Client> clientOpt = clientService.trouverClientParId(clientId);
+
+        if (clientOpt.isEmpty()) {
+            System.err.println(" Client non trouvé.");
+            return;
+        }
+
+        Client clientActuel = clientOpt.get();
+        System.out.printf("Modification du client : %s\n", clientActuel.nom());
+
+        String nom = lireString("Nouveau Nom (Laissez vide pour garder : " + clientActuel.nom() + ") : ");
+        String email = lireString("Nouvel Email (Laissez vide pour garder : " + clientActuel.email() + ") : ");
+
+        // Utilisation de l'ancien attribut si le nouveau est vide
+        String nouveauNom = nom.isEmpty() ? clientActuel.nom() : nom;
+        String nouvelEmail = email.isEmpty() ? clientActuel.email() : email;
+
+        Client clientModifie = new Client(clientId, nouveauNom, nouvelEmail);
+        clientService.modifierClient(clientModifie);
+
+        System.out.printf(" Client (ID: %d) mis à jour.\n", clientId);
+    }
+
+    private void modifierCompteUI() {
+        long compteId = lireLong("ID du Compte à modifier : ");
+        Optional<Compte> compteOpt = compteService.trouverCompteParId(compteId);
+
+        if (compteOpt.isEmpty()) {
+            System.err.println(" Compte non trouvé.");
+            return;
+        }
+
+        Compte compteActuel = compteOpt.get();
+
+        if (compteActuel instanceof CompteCourant cc) {
+            System.out.printf("Modification du Compte Courant N°%s\n", cc.getNumero());
+            double decouvert = lireDouble("Nouveau Découvert Autorisé (Actuel: " + cc.getDecouvertAutorise() + ") : ");
+
+            // Création d'un nouvel objet CompteCourant avec l'ID correct pour la mise à jour
+            CompteCourant compteModifie = new CompteCourant(cc.getId(), cc.getNumero(), cc.getSolde(), cc.getIdClient(), decouvert);
+            compteService.compteDAO.update(compteModifie);
+            System.out.println(" Découvert autorisé mis à jour.");
+
+        } else if (compteActuel instanceof CompteEpargne ce) {
+            System.out.printf("Modification du Compte Épargne N°%s\n", ce.getNumero());
+            double taux = lireDouble("Nouveau Taux d'Intérêt (Actuel: " + ce.getTauxInteret() + ") : ");
+
+            // Création d'un nouvel objet CompteEpargne avec l'ID correct
+            CompteEpargne compteModifie = new CompteEpargne(ce.getId(), ce.getNumero(), ce.getSolde(), ce.getIdClient(), taux);
+            compteService.compteDAO.update(compteModifie);
+            System.out.println(" Taux d'intérêt mis à jour.");
+
+        } else {
+            System.err.println("Type de compte non pris en charge pour la modification.");
+        }
+    }
+
+    private void rechercherClientParNomUI() {
+        System.out.println("\n--- RECHERCHE DE CLIENT PAR NOM ---");
+        String nom = lireString("Nom (partiel) du Client à rechercher : ");
+
+        List<Client> clientsTrouves = clientService.trouverClientsParNom(nom);
+
+        if (clientsTrouves.isEmpty()) {
+            System.out.println("Aucun client trouvé contenant '" + nom + "'.");
+            return;
+        }
+
+        System.out.printf("\n--- %d CLIENT(S) TROUVÉ(S) --- \n", clientsTrouves.size());
+        clientsTrouves.forEach(c -> System.out.printf("[ID: %d] %s (%s)\n", c.id(), c.nom(), c.email()));
+    }
+
+    private void afficherComptesMaxMinSolde() {
+        System.out.println("\n--- COMPTES AVEC SOLDE MAXIMAL ET MINIMAL ---");
+
+        Optional<Compte> maxCompte = compteService.trouverCompteAvecSoldeMaximum();
+        Optional<Compte> minCompte = compteService.trouverCompteAvecSoldeMinimum();
+
+        if (maxCompte.isPresent()) {
+            Compte c = maxCompte.get();
+            System.out.printf(" Solde MAXIMUM : Compte N° %s (Client ID: %d) - Solde: %s\n",
+                    c.getNumero(),
+                    c.getIdClient(),
+                    FormatUtils.formatMontant(c.getSolde()));
+        } else {
+            System.out.println("Impossible de trouver un compte pour le solde maximum.");
+        }
+
+        if (minCompte.isPresent()) {
+            Compte c = minCompte.get();
+            System.out.printf("Solde MINIMUM : Compte N° %s (Client ID: %d) - Solde: %s\n",
+                    c.getNumero(),
+                    c.getIdClient(),
+                    FormatUtils.formatMontant(c.getSolde()));
+        } else {
+            System.out.println("Impossible de trouver un compte pour le solde minimum.");
+        }
     }
 
     // --- Menu 2 : Opérations Bancaires ---
@@ -306,6 +457,9 @@ public class Main {
             System.out.println("1. Lister les Transactions par Compte");
             System.out.println("2. Filtrer les Transactions par Montant Minimum");
             System.out.println("3. Regrouper les Transactions par Type");
+            System.out.println("4. Filtrer les Transactions par Date");
+            System.out.println("5. Filtrer les Transactions par Lieu");
+            System.out.println("6. Calculer le Volume Total des Transactions par Client");
             System.out.println("0. Retour au Menu Principal");
             System.out.print("Votre choix : ");
 
@@ -316,6 +470,9 @@ public class Main {
                     case 1 -> listerTransactionsParCompteUI();
                     case 2 -> filtrerParMontantMinUI();
                     case 3 -> regrouperParTypeUI();
+                    case 4 -> filtrerParDateUI();
+                    case 5 -> filtrerParLieuUI();
+                    case 6 -> calculerTotalTransactionsClientUI();
                     case 0 -> System.out.println("Retour...");
                     default -> System.err.println("Choix invalide.");
                 }
@@ -373,6 +530,67 @@ public class Main {
                     list.size(),
                     FormatUtils.formatMontant(total));
         });
+    }
+    private void filtrerParDateUI() {
+        System.out.println("\n--- FILTRE PAR DATE (JJ/MM/AAAA) ---");
+        String dateStr = lireString("Entrez la date (Ex: 01/10/2025) : ");
+
+        try {
+            // Utiliser le formateur de date pour convertir l'entrée utilisateur
+            LocalDate dateFiltre = LocalDate.parse(dateStr, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+            List<Transaction> transactions = transactionService.filtrerParDate(dateFiltre);
+
+            if (transactions.isEmpty()) {
+                System.out.printf("Aucune transaction trouvée pour la date %s.\n", FormatUtils.formatDate(dateFiltre));
+                return;
+            }
+
+            System.out.printf("\n--- TRANSACTIONS DU %s ---\n", FormatUtils.formatDate(dateFiltre));
+            transactions.forEach(t -> System.out.printf("[ID Compte: %d] %s: %s à %s\n",
+                    t.idCompte(),
+                    t.type(),
+                    FormatUtils.formatMontant(t.montant()),
+                    t.lieu()));
+        } catch (java.time.format.DateTimeParseException e) {
+            System.err.println(" Format de date invalide. Utilisez JJ/MM/AAAA.");
+        }
+    }
+
+    private void filtrerParLieuUI() {
+        System.out.println("\n--- FILTRE PAR LIEU ---");
+        String lieu = lireString("Entrez le lieu (partiel) à rechercher : ");
+
+        List<Transaction> transactions = transactionService.filtrerParLieu(lieu);
+
+        if (transactions.isEmpty()) {
+            System.out.printf("Aucune transaction trouvée pour le lieu contenant '%s'.\n", lieu);
+            return;
+        }
+
+        System.out.printf("\n--- TRANSACTIONS EFFECTUÉES À/DANS %s ---\n", lieu.toUpperCase());
+        transactions.forEach(t -> System.out.printf("[%s] %s: %s à %s (Compte %d)\n",
+                FormatUtils.formatDate(t.date()),
+                t.type(),
+                FormatUtils.formatMontant(t.montant()),
+                t.lieu(),
+                t.idCompte()));
+    }
+
+    private void calculerTotalTransactionsClientUI() {
+        System.out.println("\n--- VOLUME TOTAL DES TRANSACTIONS PAR CLIENT ---");
+        long clientId = lireLong("ID du Client : ");
+
+        if (clientService.trouverClientParId(clientId).isEmpty()) {
+            System.err.println(" Client avec l'ID " + clientId + " non trouvé.");
+            return;
+        }
+
+        double volumeTotal = transactionService.calculerTotalTransactionsParClient(clientId);
+
+        System.out.printf(" Le volume total des transactions pour le client ID %d est de : %s\n",
+                clientId,
+                FormatUtils.formatMontant(volumeTotal));
     }
 
     // --- Menu 4 : Analyse et Rapports ---
@@ -497,5 +715,16 @@ public class Main {
                 t.idCompte(),
                 FormatUtils.formatMontant(t.montant()),
                 FormatUtils.formatDate(t.date())));
+    }
+
+    private static final double SEUIL_ALERTE_SOLDE_BAS = 100.0;
+
+    private void verifierEtAfficherAlerteSoldeBas(Compte compte) {
+        if (compte.getSolde() < SEUIL_ALERTE_SOLDE_BAS) {
+            System.out.printf(" ALERTE SOLDE BAS : Le compte N° %s a un solde de %s, inférieur au seuil de %s.\n",
+                    compte.getNumero(),
+                    FormatUtils.formatMontant(compte.getSolde()),
+                    FormatUtils.formatMontant(SEUIL_ALERTE_SOLDE_BAS));
+        }
     }
 }

@@ -44,11 +44,6 @@ public class CompteService {
     }
 
     //  Transactions
-
-    /**
-     * Effectue une opération de débit sur un compte et enregistre la transaction.
-     * C'est une opération critique nécessitant la mise à jour du solde ET la sauvegarde de la transaction.
-     */
     public boolean effectuerRetrait(long idCompte, double montant, String lieu) {
         Optional<Compte> compteOpt = compteDAO.findById(idCompte);
 
@@ -60,7 +55,7 @@ public class CompteService {
         Compte compte = compteOpt.get();
         double soldeInitial = compte.getSolde();
 
-        // 1. Logique métier du compte : la méthode debiter() de CompteCourant/Epargne vérifie les plafonds
+        // la méthode debiter() de CompteCourant/Epargne vérifie les plafonds
         compte.debiter(montant);
 
         if (compte.getSolde() < soldeInitial) {
@@ -80,12 +75,8 @@ public class CompteService {
         }
     }
 
-    /**
-     * Effectue une opération de crédit (versement) et enregistre la transaction.
-     */
     public boolean effectuerVersement(long idCompte, double montant, String lieu) {
         return trouverCompteParId(idCompte).map(compte -> {
-            // Programmation Fonctionnelle : Utilisation de map sur Optional
             compte.crediter(montant);
             compteDAO.update(compte);
 
@@ -100,9 +91,6 @@ public class CompteService {
         });
     }
 
-    /**
-     * Effectue un virement entre deux comptes. C'est une double opération (débit et crédit).
-     */
     public boolean effectuerVirement(long idCompteSource, long idCompteDest, double montant) {
         // Logique transactionnelle (simplifiée ici, sans bloc transactionnel JDBC)
         boolean debitReussi = this.effectuerRetrait(idCompteSource, montant, "Virement sortant vers Compte ID " + idCompteDest);
@@ -115,17 +103,25 @@ public class CompteService {
         System.err.println("Virement échoué au débit. Annulation du processus.");
         return false;
     }
+    // Trouve le compte ayant le solde le plus élevé.
+    public Optional<Compte> trouverCompteAvecSoldeMaximum() {
+        return compteDAO.findAll().stream()
+                // Utilise max() avec un Comparator pour trouver l'élément ayant la plus grande valeur
+                .max(Comparator.comparingDouble(Compte::getSolde));
+    }
+    // Trouve le compte ayant le solde le moins élevé.
+    public Optional<Compte> trouverCompteAvecSoldeMinimum() {
+        return compteDAO.findAll().stream()
+                // Utilise min() avec un Comparator pour trouver l'élément ayant la plus petite valeur
+                .min(Comparator.comparingDouble(Compte::getSolde));
+    }
 
-    // --- Méthodes de Rapport (Utilisation de la Programmation Fonctionnelle / Stream API) ---
 
-    /**
-     * Retourne la liste des transactions d'un compte triées par montant décroissant.
-     * Utilise Stream API pour le tri.
-     */
+    // --- Méthodes de Rapport
+
     public List<Transaction> trouverTransactionsTrieesParMontant(long idCompte) {
         List<Transaction> transactions = transactionDAO.findByCompteId(idCompte);
 
-        // Programmation Fonctionnelle : Stream, Sorted et Comparator
         return transactions.stream()
                 // Tri : utilise la référence de méthode Transaction::montant
                 .sorted(Comparator.comparingDouble(Transaction::montant).reversed())
